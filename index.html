@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fill the Jars — Sensory Calm-Down Timer</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="root">
+  <div class="blob blob-1"></div>
+  <div class="blob blob-2"></div>
+  <div class="blob blob-3"></div>
+
+  <div class="stage">
+    <div class="row-outer" id="rowOuter">
+      <div class="spout" id="spout" hidden></div>
+      <div class="drops-layer" id="dropsLayer"></div>
+      <div class="ring" id="ring" hidden></div>
+
+      <div class="jars-row" id="jarsRow"></div>
+
+      <div class="splash-layer" id="splashLayer"></div>
+    </div>
+
+    <div class="card" id="setupCard">
+      <div class="label">Set a time</div>
+      <div class="input-row">
+        <input type="number" id="minutesInput" min="0" max="180" value="2" aria-label="Minutes">
+        <div class="unit">min</div>
+        <input type="number" id="secondsInput" min="0" max="59" value="0" aria-label="Seconds">
+        <div class="unit">sec</div>
+      </div>
+      <button class="start-button" id="startButton">Start filling</button>
+    </div>
+
+    <button class="reset-button" id="resetButton" hidden aria-label="Reset timer" title="Reset">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M1 4v6h6"></path>
+        <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
+      </svg>
+    </button>
+  </div>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
