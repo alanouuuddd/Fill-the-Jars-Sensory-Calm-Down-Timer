@@ -2,7 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Fill the Jars — Sensory Calm-Down Timer</title>
 <link rel="stylesheet" href="style.css">
 </head>
@@ -26,12 +28,17 @@
     <div class="card" id="setupCard">
       <div class="label">Set a time</div>
       <div class="input-row">
-        <input type="number" id="minutesInput" min="0" max="180" value="2" aria-label="Minutes">
+        <input type="number" inputmode="numeric" pattern="[0-9]*" id="minutesInput" min="0" max="180" value="2" aria-label="Minutes">
         <div class="unit">min</div>
-        <input type="number" id="secondsInput" min="0" max="59" value="0" aria-label="Seconds">
+        <input type="number" inputmode="numeric" pattern="[0-9]*" id="secondsInput" min="0" max="59" value="0" aria-label="Seconds">
         <div class="unit">sec</div>
       </div>
       <button class="start-button" id="startButton">Start filling</button>
+    </div>
+
+    <div class="controls" id="controlsBar" hidden>
+      <button class="control-button" id="pauseButton">Pause</button>
+      <button class="control-button" id="stopButton">Stop</button>
     </div>
 
     <button class="reset-button" id="resetButton" hidden aria-label="Reset timer" title="Reset">

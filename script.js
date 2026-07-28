@@ -1,9 +1,12 @@
 (() => {
   const NUM_JARS = 8;
+  const COLS = 3;
+  const ROWS = Math.ceil(NUM_JARS / COLS);
   const JAR_W = 90, JAR_H = 135, GAP = 14;
   const FILL_TOP = 9, FILL_BOTTOM = 134;
   const OVERLAY_H = 44;
-  const TOTAL_W = NUM_JARS * JAR_W + (NUM_JARS - 1) * GAP;
+  const ROW_H = JAR_H + OVERLAY_H;
+  const ROW_W = COLS * JAR_W + (COLS - 1) * GAP;
   const FALL_MS = 750;
   const FLOW_SPEED = 1;
   const DRIP_INTERVAL = 900 / FLOW_SPEED;
@@ -21,7 +24,9 @@
 
   const withAlpha = (color, alpha) => color.replace(")", ` / ${alpha})`);
 
-  const jarX = (i) => i * (JAR_W + GAP) + JAR_W / 2;
+  const jarCol = (i) => i % COLS;
+  const jarRow = (i) => Math.floor(i / COLS);
+  const jarX = (i) => jarCol(i) * (JAR_W + GAP) + JAR_W / 2;
 
   const rowOuter = document.getElementById("rowOuter");
   const jarsRow = document.getElementById("jarsRow");
@@ -30,15 +35,19 @@
   const ring = document.getElementById("ring");
   const splashLayer = document.getElementById("splashLayer");
   const setupCard = document.getElementById("setupCard");
+  const controlsBar = document.getElementById("controlsBar");
+  const pauseButton = document.getElementById("pauseButton");
+  const stopButton = document.getElementById("stopButton");
   const resetButton = document.getElementById("resetButton");
   const startButton = document.getElementById("startButton");
   const minutesInput = document.getElementById("minutesInput");
   const secondsInput = document.getElementById("secondsInput");
 
-  rowOuter.style.width = `${TOTAL_W}px`;
-  rowOuter.style.height = `${OVERLAY_H + JAR_H}px`;
+  rowOuter.style.width = `${ROW_W}px`;
+  rowOuter.style.height = `${ROWS * ROW_H}px`;
 
   let phase = "setup";
+  let isPaused = false;
   let activeIndex = 0;
   let dropsLanded = 0;
   let totalDropsPerJar = 1;
@@ -99,9 +108,15 @@
       wrap.appendChild(clip);
       wrap.appendChild(svg);
       wrap.appendChild(badge);
+      wrap.setAttribute("role", "button");
+      wrap.setAttribute("aria-label", `Jar ${i + 1}, tap to jiggle`);
+      wrap.addEventListener("click", () => pokeJar(i));
+      wrap.addEventListener("animationend", (e) => {
+        if (e.animationName === "jiggle") wrap.classList.remove("jiggle");
+      });
       jarsRow.appendChild(wrap);
 
-      jars.push({ progress: 0, filled: false, glow, water, badge });
+      jars.push({ progress: 0, filled: false, glow, water, badge, wrap });
     }
   }
 
@@ -120,16 +135,63 @@
     for (let i = 0; i < NUM_JARS; i++) setJarProgress(i, 0);
   }
 
+  function spawnBurst(layer, cx, cy, color, count, opts = {}) {
+    const {
+      spread = 160, distMin = 40, distMax = 100,
+      sizeMin = 6, sizeMax = 12, durMin = 0.7, durMax = 1.0, life = 1400,
+    } = opts;
+    for (let i = 0; i < count; i++) {
+      const angle = (Math.random() * spread - spread / 2) * (Math.PI / 180);
+      const dist = distMin + Math.random() * (distMax - distMin);
+      const sx = Math.sin(angle) * dist;
+      const sy = -Math.abs(Math.cos(angle) * dist) - Math.random() * 20;
+      const size = sizeMin + Math.random() * (sizeMax - sizeMin);
+
+      const drop = document.createElement("div");
+      drop.className = "splash-drop";
+      drop.style.left = `${cx}px`;
+      drop.style.top = `${cy}px`;
+      drop.style.width = `${size}px`;
+      drop.style.height = `${size}px`;
+      drop.style.marginLeft = `-${size / 2}px`;
+      drop.style.background = color;
+      drop.style.boxShadow = `0 0 10px ${color}`;
+      drop.style.setProperty("--sx", `${sx}px`);
+      drop.style.setProperty("--sy", `${sy + 60}px`);
+      drop.style.setProperty("--dur", `${(durMin + Math.random() * (durMax - durMin)).toFixed(2)}s`);
+      drop.style.setProperty("--delay", `${(Math.random() * 0.15).toFixed(2)}s`);
+      layer.appendChild(drop);
+      setTimeout(() => drop.remove(), life);
+    }
+  }
+
+  function pokeJar(idx) {
+    const jar = jars[idx];
+    jar.wrap.classList.remove("jiggle");
+    void jar.wrap.offsetWidth;
+    jar.wrap.classList.add("jiggle");
+
+    const row = jarRow(idx);
+    const cx = jarX(idx);
+    const cy = OVERLAY_H + row * ROW_H + 24;
+    spawnBurst(splashLayer, cx, cy, JAR_COLORS[idx], jar.filled ? 10 : 5, {
+      spread: 130, distMin: 16, distMax: 46, sizeMin: 4, sizeMax: 8,
+      durMin: 0.45, durMax: 0.7, life: 800,
+    });
+  }
+
   function spawnDrop(idx) {
     const p = jars[idx].progress;
+    const row = jarRow(idx);
     const waterY = FILL_BOTTOM - p * (FILL_BOTTOM - FILL_TOP);
-    const endY = Math.max(FILL_TOP + 6, waterY) + OVERLAY_H;
+    const travel = Math.max(FILL_TOP + 6, waterY) + OVERLAY_H;
 
     const drop = document.createElement("div");
     drop.className = "drop";
     drop.style.left = `${jarX(idx)}px`;
+    drop.style.top = `${row * ROW_H}px`;
     drop.style.background = JAR_COLORS[idx];
-    drop.style.setProperty("--end", `${endY}px`);
+    drop.style.setProperty("--end", `${travel}px`);
     dropsLayer.appendChild(drop);
 
     setTimeout(() => {
@@ -151,13 +213,15 @@
   }
 
   function updateSpout() {
+    const row = jarRow(activeIndex);
     spout.style.left = `${jarX(activeIndex)}px`;
+    spout.style.top = `${28 + row * ROW_H}px`;
   }
 
   function startDripping() {
     clearInterval(dripTimer);
     dripTimer = setInterval(() => {
-      if (phase !== "running") return;
+      if (phase !== "running" || isPaused) return;
       spawnDrop(activeIndex);
     }, DRIP_INTERVAL);
   }
@@ -170,6 +234,7 @@
     totalDropsPerJar = Math.max(1, Math.round((segDuration * 1000) / DRIP_INTERVAL));
 
     phase = "running";
+    isPaused = false;
     activeIndex = 0;
     dropsLanded = 0;
     resetJars();
@@ -180,49 +245,39 @@
     resetButton.hidden = true;
     ring.hidden = true;
     spout.hidden = false;
+    pauseButton.textContent = "Pause";
+    controlsBar.hidden = false;
     updateSpout();
 
     startDripping();
+  }
+
+  function onTogglePause() {
+    if (phase !== "running") return;
+    isPaused = !isPaused;
+    pauseButton.textContent = isPaused ? "Resume" : "Pause";
   }
 
   function completeFill() {
     clearInterval(dripTimer);
     phase = "complete";
     spout.hidden = true;
+    controlsBar.hidden = true;
+
+    const lastRow = jarRow(NUM_JARS - 1);
+    const cx = jarX(NUM_JARS - 1);
+    const cy = OVERLAY_H + lastRow * ROW_H + 20;
 
     ring.hidden = false;
-    ring.style.left = "50%";
-    ring.style.borderColor = JAR_COLORS[NUM_JARS - 1];
+    ring.style.left = `${cx}px`;
+    ring.style.top = `${18 + lastRow * ROW_H}px`;
     ring.style.border = `2px solid ${JAR_COLORS[NUM_JARS - 1]}`;
     // restart the animation
     ring.style.animation = "none";
     void ring.offsetWidth;
     ring.style.animation = "";
 
-    const cx = TOTAL_W / 2;
-    for (let i = 0; i < 18; i++) {
-      const angle = (Math.random() * 160 - 80) * (Math.PI / 180);
-      const dist = 40 + Math.random() * 60;
-      const sx = Math.sin(angle) * dist;
-      const sy = -Math.abs(Math.cos(angle) * dist) - Math.random() * 20;
-      const size = 6 + Math.random() * 6;
-      const color = JAR_COLORS[i % JAR_COLORS.length];
-
-      const drop = document.createElement("div");
-      drop.className = "splash-drop";
-      drop.style.left = `${cx}px`;
-      drop.style.top = `${OVERLAY_H + 20}px`;
-      drop.style.width = `${size}px`;
-      drop.style.height = `${size}px`;
-      drop.style.marginLeft = `-${size / 2}px`;
-      drop.style.background = color;
-      drop.style.boxShadow = `0 0 10px ${color}`;
-      drop.style.setProperty("--sx", `${sx}px`);
-      drop.style.setProperty("--sy", `${sy + 60}px`);
-      drop.style.setProperty("--dur", `${(0.7 + Math.random() * 0.3).toFixed(2)}s`);
-      drop.style.setProperty("--delay", `${(Math.random() * 0.15).toFixed(2)}s`);
-      splashLayer.appendChild(drop);
-    }
+    spawnBurst(splashLayer, cx, cy, JAR_COLORS[NUM_JARS - 1], 18);
 
     setTimeout(() => {
       splashLayer.innerHTML = "";
@@ -236,6 +291,7 @@
   function onReset() {
     clearInterval(dripTimer);
     phase = "setup";
+    isPaused = false;
     activeIndex = 0;
     dropsLanded = 0;
     resetJars();
@@ -243,11 +299,14 @@
     splashLayer.innerHTML = "";
     ring.hidden = true;
     spout.hidden = true;
+    controlsBar.hidden = true;
     resetButton.hidden = true;
     setupCard.hidden = false;
   }
 
   buildJars();
   startButton.addEventListener("click", onStart);
+  pauseButton.addEventListener("click", onTogglePause);
+  stopButton.addEventListener("click", onReset);
   resetButton.addEventListener("click", onReset);
 })();
