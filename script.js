@@ -1,12 +1,16 @@
 (() => {
   const NUM_JARS = 8;
-  const COLS = 3;
-  const ROWS = Math.ceil(NUM_JARS / COLS);
   const JAR_W = 90, JAR_H = 135, GAP = 14;
   const FILL_TOP = 9, FILL_BOTTOM = 134;
   const OVERLAY_H = 44;
   const ROW_H = JAR_H + OVERLAY_H;
-  const ROW_W = COLS * JAR_W + (COLS - 1) * GAP;
+
+  // Portrait phones/tablets stack jars in a 3-wide grid; landscape and
+  // desktop lay them out beside each other in a single row (falling back
+  // to 4-wide on narrow landscape phones so nothing overflows).
+  let COLS = 3;
+  let ROWS = Math.ceil(NUM_JARS / COLS);
+  let ROW_W = COLS * JAR_W + (COLS - 1) * GAP;
   const FALL_MS = 750;
   const FLOW_SPEED = 1;
   const DRIP_INTERVAL = 900 / FLOW_SPEED;
@@ -42,9 +46,6 @@
   const startButton = document.getElementById("startButton");
   const minutesInput = document.getElementById("minutesInput");
   const secondsInput = document.getElementById("secondsInput");
-
-  rowOuter.style.width = `${ROW_W}px`;
-  rowOuter.style.height = `${ROWS * ROW_H}px`;
 
   let phase = "setup";
   let isPaused = false;
@@ -218,6 +219,39 @@
     spout.style.top = `${28 + row * ROW_H}px`;
   }
 
+  function repositionRing() {
+    if (ring.hidden) return;
+    const lastRow = jarRow(NUM_JARS - 1);
+    ring.style.left = `${jarX(NUM_JARS - 1)}px`;
+    ring.style.top = `${18 + lastRow * ROW_H}px`;
+  }
+
+  function computeCols() {
+    const isLandscape = window.matchMedia("(orientation: landscape)").matches;
+    if (!isLandscape) return 3;
+    return window.innerWidth >= 860 ? NUM_JARS : 4;
+  }
+
+  function applyLayout() {
+    COLS = computeCols();
+    ROWS = Math.ceil(NUM_JARS / COLS);
+    ROW_W = COLS * JAR_W + (COLS - 1) * GAP;
+    jarsRow.style.gridTemplateColumns = `repeat(${COLS}, ${JAR_W}px)`;
+    rowOuter.style.width = `${ROW_W}px`;
+    rowOuter.style.height = `${ROWS * ROW_H}px`;
+    if (phase === "running") updateSpout();
+    repositionRing();
+  }
+
+  let layoutRAF = null;
+  function scheduleLayout() {
+    if (layoutRAF) return;
+    layoutRAF = requestAnimationFrame(() => {
+      layoutRAF = null;
+      applyLayout();
+    });
+  }
+
   function startDripping() {
     clearInterval(dripTimer);
     dripTimer = setInterval(() => {
@@ -304,9 +338,12 @@
     setupCard.hidden = false;
   }
 
+  applyLayout();
   buildJars();
   startButton.addEventListener("click", onStart);
   pauseButton.addEventListener("click", onTogglePause);
   stopButton.addEventListener("click", onReset);
   resetButton.addEventListener("click", onReset);
+  window.addEventListener("resize", scheduleLayout);
+  window.addEventListener("orientationchange", scheduleLayout);
 })();

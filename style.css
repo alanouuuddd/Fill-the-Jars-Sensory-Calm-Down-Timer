@@ -83,7 +83,8 @@ html, body {
   padding: 24px 16px calc(24px + env(safe-area-inset-bottom));
 }
 
-/* Jar row: 3 across, remaining jars wrap to the next line */
+/* Jar row layout (column count + size overridden by script.js at runtime:
+   portrait phones/tablets stack 3 across, landscape/desktop go single-row) */
 .row-outer {
   position: relative;
   width: 298px; /* 3 * 90 + 2 * 14 */
